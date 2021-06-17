@@ -37,16 +37,99 @@ def coord_trans(bbox, h_pixel, w_pixel, h_amap=7, w_amap=7, mode="p2a"):
         return bbox
 
     resized_bbox = bbox.clone()
+    resized_bbox = resized_bbox.view(bbox.shape[0], -1, bbox.shape[-1])
     invalid_bbox_mask = (resized_bbox == -1)
     height_ratio = h_pixel * 1. / h_amap
     width_ratio = w_pixel * 1. / w_amap
+    height_ratio = height_ratio.to(resized_bbox.device)
+    width_ratio = width_ratio.to(resized_bbox.device)
+
     if mode == "p2a":
         # transfer from original image to activation map
-        resized_bbox[..., [0, 2]] /= width_ratio
-        resized_bbox[..., [1, 3]] /= height_ratio
+        resized_bbox[..., [0, 2]] /= width_ratio.view(-1, 1, 1)
+        resized_bbox[..., [1, 3]] /= height_ratio.view(-1, 1, 1)
     else:
-        resized_bbox[..., [0, 2]] *= width_ratio
-        resized_bbox[..., [1, 3]] *= height_ratio
-    resized_bbox.mask_fill_(invalid_bbox_mask, -1)
+        resized_bbox[..., [0, 2]] *= width_ratio.view(-1, 1, 1)
+        resized_bbox[..., [1, 3]] *= height_ratio.view(-1, 1, 1)
+
+    resized_bbox.masked_fill_(invalid_bbox_mask, -1)
+    resized_bbox.resize_as_(bbox)
     return resized_bbox
 
+
+def get_anchor_shapes(cfg):
+    """Return anchor shapes.
+
+    @Params:
+    -------
+    cfg (config.Config):
+        An instance of Config, in which cfg.anchor_shapes is a list of anchor shapes.
+    """
+    assert hasattr(cfg, "anchor_shapes"), "cfg has no attribute named `anchor_shapes`!"
+    return torch.tensor(cfg.anchor_shapes)
+
+
+def generate_grids(batch_size, h_amap=7, w_amap=7, device="cuda"):
+    """
+    Generate grid centers.
+
+    @Parmas:
+    -------
+    batch_size (int):
+        Batches of grids to return.
+    h_amap (int):
+        Height of the activation map (number of grids in vertical dimension).
+    w_amap (int):
+        Width of the activation map (number of grids in horizontal dimension).
+    device (string):
+        Device of the returned tensor.
+
+    @Returns:
+    -------
+    grids (tensor):
+        A float32 tensor of shape [B, h_amap, w_amap, 2] giving (cx, cy) coordinates
+        of the centers of each feature for a feature map of shape (B, D, h_amap, w_amap)
+    """
+    h_range = torch.arange(h_amap, dtype=torch.float32, device=device) + 0.5
+    w_range = torch.arange(w_amap, dtype=torch.float32, device=device) + 0.5
+
+    grid_ys = h_range.view(-1, 1).repeat(1, w_amap)
+    grid_xs = w_range.view(1, -1).repeat(h_amap, 1)
+    grid_centers = torch.stack([grid_xs, grid_ys], dim=-1)
+    grid_centers = grid_centers.unsqueeze(0).repeat(batch_size, 1, 1, 1)
+    return grid_centers
+
+
+def generate_anchors(anchor_shapes, grid_centers):
+    """
+    Generate all anchors.
+
+    @Params:
+    -------
+    anchor_shapes (tensor):
+        Tensor of shape [A, 2] giving the shapes of anchor boxes to consider at each
+        point in the grid. anchor_shapes[a] = (w, h) indicate width and height
+        of the a-th anchors.
+    grid_centers (tensor):
+        Tensor of shape [B, H', W', 2] giving the (x, y) coordinates of the center of
+        each feature from the backbone feature-map. This is the tensor returned by
+        `generate_grids()`
+
+    @Returns:
+    ------
+    anchors (tensor):
+        Tensor of shape [B, A, H', W', 4] giving the positions of all anchor boxes for
+        the entire image. anchors[b, a, h, w] is an anchor box centered at  grid_centers[b, h, w],
+        whose shape is given by anchor_shapes[a]. The anchor boxes are parameterized as
+        (x_tl, y_tl, x_br, y_br).
+    """
+    B, h_amap, w_amap = grid_centers.shape[:3]
+    A = anchor_shapes.shape[0]
+    device = grid_centers.device
+    anchor_shapes = anchor_shapes.view(1, A, 1, 1, 2).to(device)
+    grid_centers = grid_centers.unsqueeze(1)
+
+    anchors = torch.zeros([B, A, h_amap, w_amap, 4], dtype=torch.float32, device=device)
+    anchors[..., :2] = grid_centers - anchor_shapes / 2.
+    anchors[..., 2:] = grid_centers + anchor_shapes / 2.
+    return anchors

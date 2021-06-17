@@ -71,7 +71,7 @@ def change_lightness_color(color, factor: float):
     return colorsys.hls_to_rgb(h, 1 - factor * (1 - l), s)
 
 
-def visualize_detection(image, map_id_to_cls=None, bbox=None, pred=None):
+def visualize_detection(image, bbox=None, pred=None, map_id_to_cls=None, fixed_color=False):
     """
     Visualize bbox on the original image.
 
@@ -88,6 +88,7 @@ def visualize_detection(image, map_id_to_cls=None, bbox=None, pred=None):
         Predicted bbox, tensor of shape [N, 6], where 6 indicates
             (x_tl, y_tl, x_br, y_br, cls_id, cls_conf_score)
     """
+    image = np.array(image).astype(np.uint8)
     n = 0
     if bbox is not None:
         n = max(n, bbox.shape[0])
@@ -99,14 +100,21 @@ def visualize_detection(image, map_id_to_cls=None, bbox=None, pred=None):
         # draw GT bbox
         for i in range(bbox.shape[0]):
             one_bbox = bbox[i]
-            color = tuple(map(lambda x: int(x * 255.), cmap(i)[:3]))
+
+            if fixed_color:
+                color = (255, 0, 0)
+            else:
+                color = tuple(map(lambda x: int(x * 255.), cmap(i)[:3]))
             _draw_bbox_on_image(image, one_bbox, color, map_id_to_cls)
 
     if pred is not None:
         # draw predicted bbox
         for i in range(pred.shape[0]):
             one_bbox = pred[i]
-            color = tuple(map(lambda x: int(x * 255.), cmap(i)[:3]))
+            if fixed_color:
+                color = (0, 255, 0)
+            else:
+                color = tuple(map(lambda x: int(x * 255.), cmap(i)[:3]))
             color = change_lightness_color(color, 0.5)
             _draw_bbox_on_image(image, one_bbox, color, map_id_to_cls)
 
