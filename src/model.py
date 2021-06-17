@@ -30,5 +30,8 @@ class FeatureExtractor(nn.Module):
         return self.model(image)
 
 
+
+
+
 if __name__ == '__main__':
     model = FeatureExtractor(verbose=True)
