@@ -133,3 +133,7 @@ def generate_anchors(anchor_shapes, grid_centers):
     anchors[..., :2] = grid_centers - anchor_shapes / 2.
     anchors[..., 2:] = grid_centers + anchor_shapes / 2.
     return anchors
+
+
+def generate_proposals():
+    pass

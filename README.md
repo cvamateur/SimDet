@@ -7,5 +7,23 @@ Pytorch version of Simple Object Detection for beginners to learn.
 - One Stage Object Detection: YOLO
 - Two Stage Object Detection: Faster-RCNN
 
-
+## Structure
+```
+.
+├── config
+├── data      # You need to manually download and extract Pascal VOC dataset into this folder 
+│ └── VOCdevkit
+│     └── VOC2007
+│         ├── Annotations
+│         ├── ImageSets
+│         │ ├── Layout
+│         │ ├── Main
+│         │ └── Segmentation
+│         ├── JPEGImages
+│         ├── SegmentationClass
+│         └── SegmentationObject
+├── model
+├── src
+└── utils
+```
 

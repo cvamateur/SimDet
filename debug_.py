@@ -77,6 +77,6 @@ if __name__ == '__main__':
 
     # visualize_voc_data()
 
-    # visualize_grids()
+    visualize_grids()
 
     visualize_anchors()
