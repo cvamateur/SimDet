@@ -51,11 +51,11 @@ def _draw_bbox_on_image(image, bbox, color, map_id_to_cls=None):
         if len(bbox) > 5:
             cls_conf = f", {bbox[5]: .2f}"
         tag = cls_name + cls_conf
-        color = get_darken_color(color)
+        color = change_lightness_color(color, 2.)
         cv2.putText(image, tag, (int(bbox[0]), int(bbox[1]) + 15), cv2.FONT_HERSHEY_COMPLEX, 0.7, color, 1)
 
 
-def _darken_or_lighten_color(color, factor: float):
+def change_lightness_color(color, factor: float):
     """
     Darken or lighten a RGB color according to factor.
 
@@ -69,14 +69,6 @@ def _darken_or_lighten_color(color, factor: float):
     """
     h, l, s = colorsys.rgb_to_hls(*color)
     return colorsys.hls_to_rgb(h, 1 - factor * (1 - l), s)
-
-
-def get_lighten_color(color):
-    return _darken_or_lighten_color(color, 0.5)
-
-
-def get_darken_color(color):
-    return _darken_or_lighten_color(color, 1.5)
 
 
 def visualize_detection(image, map_id_to_cls=None, bbox=None, pred=None):
@@ -115,7 +107,7 @@ def visualize_detection(image, map_id_to_cls=None, bbox=None, pred=None):
         for i in range(pred.shape[0]):
             one_bbox = pred[i]
             color = tuple(map(lambda x: int(x * 255.), cmap(i)[:3]))
-            color = get_lighten_color(color)
+            color = change_lightness_color(color, 0.5)
             _draw_bbox_on_image(image, one_bbox, color, map_id_to_cls)
 
     plt.imshow(image)
@@ -128,7 +120,7 @@ if __name__ == '__main__':
     from src.dataset import get_pascal_voc_loader, VOCDataset, map_id_to_cls
     # Visualize VOC0712
     data_dir = r"../data/VOCdevkit/VOC2007"
-    voc = VOCDataset(data_dir)
+    voc = VOCDataset(data_dir, "train")
     ds_voc_valid = get_pascal_voc_loader(voc, batch_size=3)
 
     imgs, targets, h_list, w_list, img_id_list = next(iter(ds_voc_valid))
