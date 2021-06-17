@@ -73,10 +73,14 @@ def visualize_anchors():
         visualize_detection(img, anchors[i].view(-1, 4))
 
 
+def visualize_proposals():
+     pass
+
+
 if __name__ == '__main__':
 
     # visualize_voc_data()
 
     visualize_grids()
 
-    visualize_anchors()
+    # visualize_anchors()

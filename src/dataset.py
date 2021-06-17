@@ -21,10 +21,12 @@ class VOCDataset(Dataset):
 
     @Params
     -------
-    root_dir (string): The root directory of VOC0712.
-    image_set (string, optional): Specify which dataset split to use, `train`, `trainval`, `val`, `test`.
-    transform (callable, optional): A function/transform that takes in an PIL image and returns a
-                                    transformed version.
+    root_dir (string):
+        The root directory of VOC0712.
+    image_set (string, optional):
+        Specify which dataset split to use, `train`, `trainval`, `val`, `test`.
+    transform (callable, optional):
+        A function/transform that takes in an PIL image and returns a transformed version.
     """
 
     def __init__(self, root_dir: str, image_set: str = "val", transform: Optional[Callable] = None):

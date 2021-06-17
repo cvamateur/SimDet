@@ -18,7 +18,7 @@ def coord_trans(bbox, h_pixel, w_pixel, h_amap=7, w_amap=7, mode="p2a"):
     h_amap (int):
         Number of pixels in the height side of activation map.
     w_amap (int):
-        Number of pixels in the width side of actication map.
+        Number of pixels in the width side of activation map.
     mode (string):
         Indicate which mode the transformation is done. Either `p2a` or `a2p`,
         where `p2a` means transfer from original image to activation map;
@@ -116,7 +116,7 @@ def generate_anchors(anchor_shapes, grid_centers):
         `generate_grids()`
 
     @Returns:
-    ------
+    -------
     anchors (tensor):
         Tensor of shape [B, A, H', W', 4] giving the positions of all anchor boxes for
         the entire image. anchors[b, a, h, w] is an anchor box centered at  grid_centers[b, h, w],
@@ -135,5 +135,59 @@ def generate_anchors(anchor_shapes, grid_centers):
     return anchors
 
 
-def generate_proposals():
-    pass
+def generate_proposals(anchors, offsets, method="YOLO"):
+    """
+    Generate all proposals from anchors given offsets.
+
+    @Params:
+    -------
+    anchors (tensor):
+        Tensor of shape [B, A, H', W', 4] returned by `generate_anchors()`. Anchors are
+        parameterized by the coordinates (x_tl, y_tl, x_br, y_br).
+    offsets (tensor):
+        Transformations of the same shape as anchors, [B, A, H', W', 4], that will be
+        used to convert anchor boxes into region proposals. The formula the transformation
+        from offsets[b, a, h, w] = (tx, ty, th, tw) to anchors[b, a, h, w] = (x_tl, y_tl, x_br, y_bt)
+        will be difference according to `method`:
+            method == "YOLO":               #  Assume values in range
+                cx_p = cx_a + tx            # `tx` in range [-0.5, 0.5]
+                cy_p = cy_a + ty            # `ty` in range [-0.5, 0.5]
+                w_p = w_a * e^tw            # `tw` in range [-inf, +inf]
+                h_p = h_a * e^th            # `th` in range [-inf, +inf]
+
+            method == "FasterRCNN":         #  Assume values in range
+                cx_p = cx_a + tx * w_a      # `tx` in range [-inf, +inf]
+                cy_p = cy_a + ty * h_a      # `ty` in range [-inf, +inf]
+                w_p = w_a * e^tw            # `tw` in range [-inf, +inf]
+                h_p = h_a * e^th            # `th` in range [-inf, +inf]
+    method (string):
+        Indicate which transformation to apply, either "YOLO" or "FasterRCNN"
+
+    @Returns:
+    -------
+    proposals (tensor):
+        Region proposals, tensor of shape [B, A, H', W', 4], represented by the coordinates of
+        (x_tl, y_tl, x_br, y_br).
+    """
+    assert method in ["YOLO", "FasterRCNN"], "Invalid method, either `YOLO` or `FasterRCNN`!"
+
+    # 1. Convert anchors from (x_tl, y_tl, x_br, y_br) to (cx, cy, w, h)
+    anchors_xywh = torch.zeros_like(anchors)
+    anchors_xywh[..., :2] = anchors[..., 2:] / 2. + anchors[..., :2] / 2.
+    anchors_xywh[..., 2:] = anchors[..., 2:] - anchors[..., :2]
+
+    # 2. Apply transformation
+    proposals_xywh = torch.zeros_like(anchors)
+    if method == "YOLO":
+        proposals_xywh[..., :2] = anchors_xywh[..., :2] + offsets[..., :2]
+        proposals_xywh[..., 2:] = anchors_xywh[..., 2:] * torch.exp(offsets[..., 2:])
+    else:
+        proposals_xywh[..., :2] = anchors_xywh[..., :2] + anchors_xywh[..., 2:] * offsets[..., :2]
+        proposals_xywh[..., 2:] = anchors_xywh[..., 2:] * torch.exp(offsets[..., 2:])
+
+    # 3. Convert proposals from (cx, cy, w, h) back to (x_tl, y_tl, x_br, y_br)
+    proposals = torch.zeros_like(proposals_xywh)
+    proposals[..., :2] = proposals_xywh[..., :2] - proposals_xywh[..., 2:] / 2.
+    proposals[..., 2:] = proposals_xywh[..., :2] + proposals_xywh[..., 2:] / 2.
+    return proposals
+
