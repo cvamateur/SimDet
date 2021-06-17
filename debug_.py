@@ -6,7 +6,7 @@ from PIL import Image
 from config import Configs
 from src.dataset import get_pascal_voc_loader, VOCDataset, map_id_to_cls
 from utils.visualize import visualize_detection
-from utils.bbox_utils import coord_trans, generate_grids, get_anchor_shapes, generate_anchors
+from utils.bbox_utils import coord_trans, generate_grids, get_anchor_shapes, generate_anchors, generate_proposals
 
 
 def visualize_voc_data():
@@ -73,14 +73,63 @@ def visualize_anchors():
         visualize_detection(img, anchors[i].view(-1, 4))
 
 
-def visualize_proposals():
-     pass
+def visualize_proposals(offsets, method="YOLO"):
+    batch_size = 3
+    data_dir = Configs.root_dir
+    voc = VOCDataset(data_dir, "train")
+    ds_voc_valid = get_pascal_voc_loader(voc, batch_size=batch_size)
+    imgs, _, h_list, w_list, img_id_list = next(iter(ds_voc_valid))
+
+    anc_shapes = get_anchor_shapes(Configs)
+    grid_centers = generate_grids(batch_size)
+    anchors = generate_anchors(anc_shapes, grid_centers)
+    B, A, h_amap, w_amap = anchors.shape[:4]
+
+    print(f"{method} ---- Visualize transform {offsets}...")
+    offsets = offsets.view(1, 1, 1, 1, 4)
+    offsets = offsets.repeat(B, A, h_amap, w_amap, 1)
+    proposals = generate_proposals(anchors, offsets)
+    anchors = coord_trans(anchors, h_list, w_list, mode="a2p")
+    proposals = coord_trans(proposals, h_list, w_list, mode="a2p")
+    for i in range(imgs.shape[0]):
+        img_path = os.path.join(data_dir, "JPEGImages", img_id_list[i])
+        img = Image.open(img_path).convert("RGB")
+        visualize_detection(img,
+                            anchors[i][0, 3:4, 3:4, :].view(-1, 4),
+                            proposals[i][0, 3:4, 3:4, :].view(-1, 4),
+                            fixed_color=True)
+
+
+def visualize_yolo_xy_transform():
+    offsets_xy = torch.tensor([0.5, 0.5, 0., 0.], device="cuda")
+    visualize_proposals(offsets_xy, "YOLO")
+
+
+def visualize_yolo_wh_transform():
+    offsets_xy = torch.tensor([0., 0., 1., 1.], device="cuda")
+    visualize_proposals(offsets_xy, "YOLO")
+
+
+def visualize_faster_rcnn_xy_transform():
+    offsets_xy = torch.tensor([0.5, 0.5, 0., 0.], device="cuda")
+    visualize_proposals(offsets_xy, "FasterRCNN")
+
+
+def visualize_faster_rcnn_wh_transform():
+    offsets_xy = torch.tensor([0., 0., 1., 1.], device="cuda")
+    visualize_proposals(offsets_xy, "FasterRCNN")
 
 
 if __name__ == '__main__':
 
     # visualize_voc_data()
 
-    visualize_grids()
+    # visualize_grids()
 
     # visualize_anchors()
+
+    # visualize_yolo_xy_transform()
+    # visualize_yolo_wh_transform()
+    # visualize_faster_rcnn_xy_transform()
+    # visualize_faster_rcnn_wh_transform()
+    pass
