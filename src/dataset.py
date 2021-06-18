@@ -29,7 +29,9 @@ class VOCDataset(Dataset):
         A function/transform that takes in an PIL image and returns a transformed version.
     """
 
-    def __init__(self, root_dir: str, image_set: str = "val", transform: Optional[Callable] = None):
+    def __init__(self, root_dir: str,
+                 image_set: str = "val",
+                 transform: Optional[Callable] = None,):
         assert os.path.isdir(root_dir), f"Invalid path: {root_dir}"
         assert image_set in ["train", "trainval", "val", "test"]
         assert transform is None or callable(transform)

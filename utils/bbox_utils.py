@@ -36,6 +36,11 @@ def coord_trans(bbox, h_pixel, w_pixel, h_amap=7, w_amap=7, mode="p2a"):
     if bbox.shape[0] == 0:
         return bbox
 
+    if isinstance(h_pixel, list):
+        h_pixel = torch.tensor(h_pixel, dtype=bbox.dtype, device=bbox.device)
+    if isinstance(w_pixel, list):
+        w_pixel = torch.tensor(w_pixel, dtype=bbox.dtype, device=bbox.device)
+
     resized_bbox = bbox.clone()
     resized_bbox = resized_bbox.view(bbox.shape[0], -1, bbox.shape[-1])
     invalid_bbox_mask = (resized_bbox == -1)
@@ -66,7 +71,7 @@ def get_anchor_shapes(cfg):
         An instance of Config, in which cfg.anchor_shapes is a list of anchor shapes.
     """
     assert hasattr(cfg, "anchor_shapes"), "cfg has no attribute named `anchor_shapes`!"
-    return torch.tensor(cfg.anchor_shapes)
+    return torch.tensor(cfg.anchor_shapes).to(cfg.device)
 
 
 def generate_grids(batch_size, h_amap=7, w_amap=7, device="cuda"):
@@ -191,3 +196,42 @@ def generate_proposals(anchors, offsets, method="YOLO"):
     proposals[..., 2:] = proposals_xywh[..., :2] + proposals_xywh[..., 2:] / 2.
     return proposals
 
+
+def iou(proposals, gt_bboxes):
+    """
+    Compute Intersection over Union between sets of bounding boxes.
+
+    @Params:
+    -------
+    proposals (tensor):
+        Proposals of shape [B, A, H', W', 4], where 4 indicates (x_tl, y_tl, x_br, y_br)
+    gt_bboxes (tensor):
+        Ground truth boxes, from the DataLoader, of shape [B, N, 5], where 5 indicates
+        (x_tl, y_tl, x_br, y_br, cls_id). N is the max number of bboxes within this batch,
+        for images[i] which has fewer bboxes then N, then gt_bboxes[i] will be padded
+        with extra rows of -1.
+
+    @Returns:
+    -------
+    iou_mat (tensor):
+        IoU matrix of shape [B, A*H'*W', N] where iou_mat[b, i, n] gives the IoU between
+        one element of proposals[b] with gt_bboxes[b, n]
+    """
+    B, A, h_amap, w_amap = proposals.shape[:4]
+    N = gt_bboxes.shape[1]
+
+    # Area of proposals, shape [B, A, H', W']
+    proposals_wh = proposals[..., 2:] - proposals[:2]
+    proposals_area = proposals_wh[..., 0] * proposals_wh[..., 1]
+
+    # Area of gt_bboxes, shape [B, N]
+    gt_bboxes_wh = gt_bboxes[..., 2:] - gt_bboxes[..., :2]
+    gt_bboxes_area = gt_bboxes_wh[..., 0] * gt_bboxes_wh[..., 1]
+
+    # Area of Intersection
+    proposals = proposals.view(B, -1, 4).unsqueeze(2)   # [B, A*H'*W', 1, 4]
+    gt_bboxes = gt_bboxes.unsqueeze(1)                  # [B, 1, N, 4]
+    intersect_xy_tl = torch.maximum(proposals[..., :2], gt_bboxes[..., :2])
+    insersect_xy_br = torch.minimum(proposals[..., 2:], gt_bboxes[..., 2:])
+    # Need clamp at 0 as
+    intersect_wh = (insersect_xy_br - intersect_xy_tl).clamp(min=0.)

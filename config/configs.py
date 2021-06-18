@@ -1,11 +1,16 @@
 import os
 import sys
-
+import torch
 
 project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 class Configs:
+
+    ###########
+    # Worldwide
+    ###########
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
     ###########
     # Datasets
@@ -34,3 +39,4 @@ class Configs:
 
     # Feature Extractor
     strides = 32
+
