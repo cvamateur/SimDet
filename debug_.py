@@ -6,20 +6,28 @@ from PIL import Image
 from config import Configs
 from src.dataset import get_pascal_voc_loader, VOCDataset, map_id_to_cls
 from utils.visualize import visualize_detection
-from utils.bbox_utils import coord_trans, generate_grids, get_anchor_shapes, generate_anchors, generate_proposals
+from utils.bbox_utils import (coord_trans, generate_grids, get_anchor_shapes, generate_anchors, generate_proposals, iou,
+                              _reference_on_positive_anchors_yolo)
+
+
+def get_sample_data(n_samples=3):
+    data_dir = Configs.root_dir
+    device = Configs.device
+    voc = VOCDataset(data_dir, "train")
+    ds_voc_valid = get_pascal_voc_loader(voc, batch_size=n_samples)
+    imgs, targets, h_list, w_list, img_id_list = next(iter(ds_voc_valid))
+    targets = targets.to(device)
+    h_list = h_list.to(device)
+    w_list = w_list.to(device)
+    return imgs, targets, h_list, w_list, img_id_list
 
 
 def visualize_voc_data():
     data_dir = Configs.root_dir
-    device = Configs.device
-    voc = VOCDataset(data_dir, "train")
-    ds_voc_valid = get_pascal_voc_loader(voc, batch_size=3)
-    imgs, targets, h_list, w_list, img_id_list = next(iter(ds_voc_valid))
+    imgs, targets, h_list, w_list, img_id_list = get_sample_data(3)
 
     for i in range(imgs.shape[0]):
-        img = os.path.join(data_dir, "JPEGImages", img_id_list[i])
-        img = cv2.imread(img)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = Image.open(os.path.join(data_dir, "JPEGImages", img_id_list[i]))
         bbox = targets[i]
         valid_mask = bbox[:, 0] != -1
         bbox = bbox[valid_mask]
@@ -27,12 +35,9 @@ def visualize_voc_data():
 
 
 def visualize_grids():
-    batch_size = 3
     data_dir = Configs.root_dir
     device = Configs.device
-    voc = VOCDataset(data_dir, "train")
-    ds_voc_valid = get_pascal_voc_loader(voc, batch_size=batch_size)
-    imgs, _, h_list, w_list, img_id_list = next(iter(ds_voc_valid))
+    imgs, _, h_list, w_list, img_id_list = get_sample_data(3)
 
     grids = generate_grids(3, device=device)
     grids_xyxy = torch.cat([grids, grids], dim=-1)
@@ -53,11 +58,7 @@ def visualize_anchors():
     batch_size = 3
     data_dir = Configs.root_dir
     device = Configs.device
-    voc = VOCDataset(data_dir, "train")
-    ds_voc_valid = get_pascal_voc_loader(voc, batch_size=batch_size)
-    imgs, _, h_list, w_list, img_id_list = next(iter(ds_voc_valid))
-    h_list = h_list.to(device)
-    w_list = w_list.to(device)
+    imgs, _, h_list, w_list, img_id_list = get_sample_data(batch_size)
 
     anc_shapes = get_anchor_shapes(Configs)
     grid_centers = generate_grids(batch_size, device=device)
@@ -82,11 +83,7 @@ def visualize_proposals(offsets, method="YOLO"):
     batch_size = 3
     data_dir = Configs.root_dir
     device = Configs.device
-    voc = VOCDataset(data_dir, "train")
-    ds_voc_valid = get_pascal_voc_loader(voc, batch_size=batch_size)
-    imgs, _, h_list, w_list, img_id_list = next(iter(ds_voc_valid))
-    h_list = h_list.to(device)
-    w_list = w_list.to(device)
+    imgs, _, h_list, w_list, img_id_list = get_sample_data(batch_size)
 
     anc_shapes = get_anchor_shapes(Configs)
     grid_centers = generate_grids(batch_size, device=device)
@@ -128,6 +125,49 @@ def visualize_faster_rcnn_wh_transform():
     visualize_proposals(offsets_wh, "FasterRCNN")
 
 
+def visualize_pos_and_neg_anchors():
+    batch_size = 8
+    data_dir = Configs.root_dir
+    device = Configs.device
+    imgs, targets, h_list, w_list, img_id_list = get_sample_data(batch_size)
+    norm_targets = coord_trans(targets, h_list, w_list)
+
+    anc_shapes = get_anchor_shapes(Configs)
+    girds = generate_grids(batch_size, device=device)
+    anchors = generate_anchors(anc_shapes, girds)
+    iou_mat = iou(anchors, norm_targets)
+
+    pos_anc_idx, neg_anc_idx, gt_conf_scores, gt_offsets, gt_cls_ids, pos_anc_coord, neg_anc_coord = \
+        _reference_on_positive_anchors_yolo(anchors, norm_targets, girds, iou_mat)
+
+    num_anc_per_img = torch.prod(torch.tensor(anchors.shape[1:-1])).long()
+
+    print("Number of anchors per image:", num_anc_per_img)
+
+    # Positive Anchors
+    for i in range(imgs.shape[0]):
+        img_path = os.path.join(data_dir, "JPEGImages", img_id_list[i])
+        img = Image.open(img_path).convert("RGB")
+        anc_idx_in_img = (pos_anc_idx >= i * num_anc_per_img) & (pos_anc_idx < (i+1) * num_anc_per_img)
+        print(f"\n{i} - number positive anchors:", torch.sum(anc_idx_in_img))
+        print("pos anchor index: ", pos_anc_idx[anc_idx_in_img])
+        pos_anc_in_img = pos_anc_coord[anc_idx_in_img]
+        pos_anc_in_img = coord_trans(pos_anc_in_img, h_list[i], w_list[i], mode="a2p")
+        visualize_detection(img, targets[i, :, :4], pos_anc_in_img, map_id_to_cls, fixed_color=True)
+
+    # Negative Anchors
+    for i in range(imgs.shape[0]):
+        img_path = os.path.join(data_dir, "JPEGImages", img_id_list[i])
+        img = Image.open(img_path).convert("RGB")
+        anc_idx_in_img = (neg_anc_idx >= i * num_anc_per_img) & (neg_anc_idx < (i + 1) * num_anc_per_img)
+        print(f"\n{i} - number negative anchors:", torch.sum(anc_idx_in_img))
+        print("neg anchor index: ", neg_anc_idx[anc_idx_in_img])
+        neg_anc_in_img = neg_anc_coord[anc_idx_in_img]
+        neg_anc_in_img = coord_trans(neg_anc_in_img, h_list[i], w_list[i], mode="a2p")
+        visualize_detection(img, targets[i, :, :4], neg_anc_in_img, map_id_to_cls, fixed_color=True)
+
+
+
 if __name__ == '__main__':
 
     # visualize_voc_data()
@@ -140,4 +180,6 @@ if __name__ == '__main__':
     # visualize_yolo_wh_transform()
     # visualize_faster_rcnn_xy_transform()
     # visualize_faster_rcnn_wh_transform()
+
+    visualize_pos_and_neg_anchors()
     pass
