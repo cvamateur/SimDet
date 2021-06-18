@@ -46,8 +46,6 @@ def coord_trans(bbox, h_pixel, w_pixel, h_amap=7, w_amap=7, mode="p2a"):
     invalid_bbox_mask = (resized_bbox == -1)
     height_ratio = h_pixel * 1. / h_amap
     width_ratio = w_pixel * 1. / w_amap
-    # height_ratio = height_ratio.to(resized_bbox.device)
-    # width_ratio = width_ratio.to(resized_bbox.device)
 
     if mode == "p2a":
         # transfer from original image to activation map
@@ -305,12 +303,10 @@ def _reference_on_positive_anchors_yolo(anchors, gt_bboxes, grids, iou_mat, neg_
     bbox_mask = (gt_bboxes[:, :, 0] != -1)   # [B, N]
     bbox_centers = (gt_bboxes[..., 2:4] - gt_bboxes[..., :2]) / 2. + gt_bboxes[..., :2]  # [B, N, 2]
 
-    ######### Positive #########
+    ######### Positives #########
     # L1 distances between girds centers and gt bboxes centers, of shape [B, H'*W', N]
     mah_dist = torch.sum(torch.abs(grids.view(B, -1, 1, 2) - bbox_centers.unsqueeze(1)), dim=-1)
-    # Get the minimum dist for each grid
     min_mah_dist = torch.min(mah_dist, dim=1, keepdim=True)[0]  # [B, 1, N]
-    # positive grid
     grid_mask = (mah_dist == min_mah_dist).unsqueeze(1)         # [B, 1, H'*W', N]
 
     # Get the maximum IoU among all `A` anchors for each grid
@@ -334,11 +330,8 @@ def _reference_on_positive_anchors_yolo(anchors, gt_bboxes, grids, iou_mat, neg_
     gt_cls_ids = gt_bboxes[:, 4][pos_anc_idx].long()
     gt_bboxes = gt_bboxes[:, :4][pos_anc_idx]
 
-    ##### IMPORTANT #####
-    pos_anc_idx = (pos_anc_idx / float(N)).long()
-    #####################
-
     # Get positive anchor coord
+    pos_anc_idx = (pos_anc_idx / float(N)).long()
     pos_anc_coord = anchors.view(-1, 4)[pos_anc_idx]
 
     # GT offsets
@@ -346,7 +339,7 @@ def _reference_on_positive_anchors_yolo(anchors, gt_bboxes, grids, iou_mat, neg_
     gt_offsets_wh = torch.log((gt_bboxes[:, 2:] - gt_bboxes[:, :2]) / (pos_anc_coord[:, 2:] - pos_anc_coord[:, :2]))
     gt_offsets = torch.cat([gt_offsets_xy, gt_offsets_wh], dim=-1)
 
-    ########## Negative ##########
+    ########## Negatives ##########
     neg_anc_mask = iou_mat.view(B, -1) < neg_thresh    # [B, A*H'*W'*N]
     neg_anc_idx = torch.nonzero(neg_anc_mask.view(-1)).squeeze(-1)
     neg_anc_idx = (neg_anc_idx / float(N)).long()
