@@ -233,8 +233,6 @@ def iou(proposals, gt_bboxes):
     # Area of Intersection, shape [B, A*H'*W', N]
     intersect_xy_tl = torch.maximum(proposals[..., :2], gt_bboxes[..., :2])
     insersect_xy_br = torch.minimum(proposals[..., 2:], gt_bboxes[..., 2:])
-    intersect_xy_tl = torch.clamp(intersect_xy_tl, min=0.)
-    insersect_xy_br = torch.clamp(insersect_xy_br, min=0.)
     intersect_wh = (insersect_xy_br - intersect_xy_tl).clamp(min=0.)
     intersect_area = intersect_wh[..., 0] * intersect_wh[..., 1]  # [B, A*H'*W', N]
 
@@ -244,3 +242,54 @@ def iou(proposals, gt_bboxes):
     # IoU
     iou_mat = intersect_area / union
     return iou_mat
+
+
+def _reference_on_positive_anchors_yolo(anchors, gt_bboxes, grids, iou_mat, neg_thresh=0.3):
+    """
+    Determine the positive and negative anchors for model training.
+
+    For YOLO, a grid cell is responsible for predicting GT box if the center of the box falls
+    into that grid.
+
+    Negative labels are assigned to those anchors which has IoU lower than `neg_thresh`.
+    Anchors that are neither positive or negative are neutral, which do not contribute to
+    the training objective.
+
+    Main steps include:
+    1) Decide positive and negative anchors based on iou_mat;
+    2) Compute GT conf_score/GT offsets/Gt cls_id on the positive anchors
+    3) Compute GT conf_score for negative anchors
+
+    @Params:
+    -------
+    anchors (tensor):
+        Anchors of shape [B, A, H', W, 4], returned by `generate_anchors()`.
+    gt_bboxes (tensor):
+        GT bbox of shape [B, N, 5] returned by DataLoader, where N is PADDED GT Boxes, 5
+        indicate (x_tl, y_tl, x_br, y_br, cls_id)
+    grids (tensor):
+        Grid centers of shape [B, H', W', 2] where 2 indicate (x, y) coord.
+    iou_mat (tensor):
+        IoU matrix of shape [B, A*H'*W', N] where A is number of anchors each grid contains.
+    neg_thresh (float):
+        Threshold for specify negative anchors.
+
+    @Returns:
+    -------
+    pos_anc_idx (tensor):
+        Index on positive anchors, of shape [M], where M is the number of positive anchors.
+    neg_anc_idx (tensor):
+        Index on negative anchors, of shape [M].
+    gt_conf_scores (tensor):
+        GT IoU scores on positive anchors, of shape [M].
+    gt_offsets (tensor):
+        GT offsets on positive anchors, of shape [M, 4], denoted as (\hat{tx}, \hat{ty},
+        \hat{tw}, \hat{th}). Refer to `generate_proposals()` for the transformation.
+    gt_cls_ids (tensor):
+        GT class ids on positive anchors, of shape [M].
+    pos_anc_coord (tensor):
+        Coordinates on positive anchors (mainly for visualization purpose).
+    neg_anc_coord (tensor):
+        Coordinates on negative anchors (mainly for visualization purpose).
+    """
+    pass
