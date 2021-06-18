@@ -219,27 +219,27 @@ def iou(proposals, gt_bboxes):
     """
     B, A, h_amap, w_amap = proposals.shape[:4]
     N = gt_bboxes.shape[1]
+    proposals = proposals.view(B, -1, 1, 4)           # [B, A*H'*W', 1, 4]
+    gt_bboxes = gt_bboxes[..., :4].view(B, 1, -1, 4)  # [B, 1, N, 4]
 
-    # Area of proposals, shape [B, A, H', W']
-    proposals_wh = proposals[..., 2:] - proposals[:2]
+    # Area of proposals, shape [B, A*H'*W', 1]
+    proposals_wh = proposals[..., 2:] - proposals[..., :2]
     proposals_area = proposals_wh[..., 0] * proposals_wh[..., 1]
 
-    # Area of gt_bboxes, shape [B, N]
+    # Area of gt_bboxes, shape [B, 1, N]
     gt_bboxes_wh = gt_bboxes[..., 2:] - gt_bboxes[..., :2]
     gt_bboxes_area = gt_bboxes_wh[..., 0] * gt_bboxes_wh[..., 1]
 
-    # Area of Intersection
-    proposals = proposals.view(B, -1, 4).unsqueeze(2)   # [B, A*H'*W', 1, 4]
-    gt_bboxes = gt_bboxes.unsqueeze(1)                  # [B, 1, N, 4]
+    # Area of Intersection, shape [B, A*H'*W', N]
     intersect_xy_tl = torch.maximum(proposals[..., :2], gt_bboxes[..., :2])
     insersect_xy_br = torch.minimum(proposals[..., 2:], gt_bboxes[..., 2:])
     intersect_xy_tl = torch.clamp(intersect_xy_tl, min=0.)
     insersect_xy_br = torch.clamp(insersect_xy_br, min=0.)
     intersect_wh = (insersect_xy_br - intersect_xy_tl).clamp(min=0.)
-    intersect_area = intersect_wh[..., :2] * intersect_wh[..., 2:]  # [B, A*H'*W', N]
+    intersect_area = intersect_wh[..., 0] * intersect_wh[..., 1]  # [B, A*H'*W', N]
 
     # Area of Union
-    union = proposals_wh.view(B, -1, 1) + gt_bboxes_area.view(B, 1, -1) - intersect_area
+    union = proposals_area + gt_bboxes_area - intersect_area
 
     # IoU
     iou_mat = intersect_area / union
