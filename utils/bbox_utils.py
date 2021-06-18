@@ -242,7 +242,7 @@ def iou(proposals, gt_bboxes):
     return iou_mat
 
 
-def _reference_on_positive_anchors_yolo(anchors, gt_bboxes, grids, iou_mat, neg_thresh=0.3):
+def reference_on_positive_anchors_yolo(anchors, gt_bboxes, grids, iou_mat, neg_thresh=0.3):
     """
     Determine the positive and negative anchors for model training.
 
@@ -306,26 +306,25 @@ def _reference_on_positive_anchors_yolo(anchors, gt_bboxes, grids, iou_mat, neg_
     ######### Positives #########
     # L1 distances between girds centers and gt bboxes centers, of shape [B, H'*W', N]
     mah_dist = torch.sum(torch.abs(grids.view(B, -1, 1, 2) - bbox_centers.unsqueeze(1)), dim=-1)
-    min_mah_dist = torch.min(mah_dist, dim=1, keepdim=True)[0]  # [B, 1, N]
-    grid_mask = (mah_dist == min_mah_dist).unsqueeze(1)         # [B, 1, H'*W', N]
+    min_dist = torch.min(mah_dist, dim=1, keepdim=True)[0]  # [B, 1, N]
+    grid_mask = (mah_dist == min_dist).unsqueeze(1)         # [B, 1, H'*W', N]
 
     # Get the maximum IoU among all `A` anchors for each grid
     reshaped_iou_mat = iou_mat.view(B, A, -1, N)                # [B, A, H'*W', N]
     anc_with_max_iou = torch.max(reshaped_iou_mat, dim=1, keepdim=True)[0]  # [B, 1, H'*W', N]
     anc_mask = (reshaped_iou_mat == anc_with_max_iou)           # [B, A, H'*W', N]
 
-    # Get positive anchors, those on minimum dist grids as well as max IoU
+    # Get positive anchors which locate on min-dist grids as well as max IoU
     pos_anc_mask = (grid_mask & anc_mask).view(B, -1, N)        # [B, A*H'*W', N]
     pos_anc_mask = pos_anc_mask & bbox_mask.view(B, 1, N)       # [B, A*H'*W', N]
 
-    # Get positive anchor indexes. NOTE: one anchor could match multiple GT boxes
+    # Get positive anchor indexes. NOTE: one anchor might match multiple GT boxes
     pos_anc_idx = torch.nonzero(pos_anc_mask.view(-1)).squeeze(-1)  # [M]
 
     # GT conf scores
     gt_conf_scores = iou_mat.view(-1)[pos_anc_idx]                  # [M]
 
     # GT class ids
-    # First expand GT bboxes to the same shape as anchors
     gt_bboxes = gt_bboxes.view(B, 1, N, 5).repeat(1, A*h_amap*w_amap, 1, 1).view(-1, 5)
     gt_cls_ids = gt_bboxes[:, 4][pos_anc_idx].long()
     gt_bboxes = gt_bboxes[:, :4][pos_anc_idx]
@@ -348,3 +347,7 @@ def _reference_on_positive_anchors_yolo(anchors, gt_bboxes, grids, iou_mat, neg_
     neg_anc_coord = anchors.view(-1, 4)[neg_anc_idx]
 
     return pos_anc_idx, neg_anc_idx, gt_conf_scores, gt_offsets, gt_cls_ids, pos_anc_coord, neg_anc_coord
+
+
+def reference_on_positive_anchors_faster_rcnn():
+    pass

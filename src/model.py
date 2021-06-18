@@ -3,10 +3,7 @@ from torch import nn
 from torchvision import models
 from torchsummary import summary
 
-if torch.cuda.is_available():
-    device = "cuda"
-else:
-    device = "cpu"
+from config import Configs
 
 
 class FeatureExtractor(nn.Module):
@@ -17,7 +14,7 @@ class FeatureExtractor(nn.Module):
         super(FeatureExtractor, self).__init__()
         self.input_shape = (3, target_height, target_width)
         self.model = models.mobilenet_v2(pretrained=True).features
-        self.model.to(device)
+        self.model.to(Configs.device)
         if verbose:
             summary(self.model, (3, 224, 224))
 

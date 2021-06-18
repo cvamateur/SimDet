@@ -37,7 +37,7 @@ def get_cmap(n, name='prism'):
     return plt.cm.get_cmap(name, n)
 
 
-def _draw_bbox_on_image(image, bbox, color, map_id_to_cls=None):
+def _draw_bbox_on_image(image, bbox, color, map_id_to_cls=None, fix_color=False):
     """
     Draw one bbox on image.
     """
@@ -51,7 +51,7 @@ def _draw_bbox_on_image(image, bbox, color, map_id_to_cls=None):
         if len(bbox) > 5:
             cls_conf = f", {bbox[5]: .2f}"
         tag = cls_name + cls_conf
-        color = change_lightness_color(color, 2.)
+        if not fix_color: color = change_lightness_color(color, 2.)
         cv2.putText(image, tag, (int(bbox[0]), int(bbox[1]) + 15), cv2.FONT_HERSHEY_COMPLEX, 0.7, color, 1)
 
 
@@ -115,7 +115,7 @@ def visualize_detection(image, bbox=None, pred=None, map_id_to_cls=None, fix_col
                 color = (0, 255, 0)
             else:
                 color = tuple(map(lambda x: int(x * 255.), cmap(i)[:3]))
-            color = change_lightness_color(color, 0.5)
+                color = change_lightness_color(color, 0.5)
             _draw_bbox_on_image(image, one_bbox, color, map_id_to_cls)
 
     plt.imshow(image)

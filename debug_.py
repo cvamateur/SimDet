@@ -6,8 +6,10 @@ from PIL import Image
 from config import Configs
 from src.dataset import get_pascal_voc_loader, VOCDataset, map_id_to_cls
 from utils.visualize import visualize_detection
-from utils.bbox_utils import (coord_trans, generate_grids, get_anchor_shapes, generate_anchors, generate_proposals, iou,
-                              _reference_on_positive_anchors_yolo)
+from utils.bbox_utils import (
+    coord_trans, generate_grids, get_anchor_shapes, generate_anchors, generate_proposals, iou,
+    reference_on_positive_anchors_yolo,
+)
 
 
 def get_sample_data(n_samples=3):
@@ -138,7 +140,7 @@ def visualize_pos_and_neg_anchors():
     iou_mat = iou(anchors, norm_targets)
 
     pos_anc_idx, neg_anc_idx, gt_conf_scores, gt_offsets, gt_cls_ids, pos_anc_coord, neg_anc_coord = \
-        _reference_on_positive_anchors_yolo(anchors, norm_targets, girds, iou_mat)
+        reference_on_positive_anchors_yolo(anchors, norm_targets, girds, iou_mat)
 
     num_anc_per_img = torch.prod(torch.tensor(anchors.shape[1:-1])).long()
 
