@@ -233,5 +233,14 @@ def iou(proposals, gt_bboxes):
     gt_bboxes = gt_bboxes.unsqueeze(1)                  # [B, 1, N, 4]
     intersect_xy_tl = torch.maximum(proposals[..., :2], gt_bboxes[..., :2])
     insersect_xy_br = torch.minimum(proposals[..., 2:], gt_bboxes[..., 2:])
-    # Need clamp at 0 as
+    intersect_xy_tl = torch.clamp(intersect_xy_tl, min=0.)
+    insersect_xy_br = torch.clamp(insersect_xy_br, min=0.)
     intersect_wh = (insersect_xy_br - intersect_xy_tl).clamp(min=0.)
+    intersect_area = intersect_wh[..., :2] * intersect_wh[..., 2:]  # [B, A*H'*W', N]
+
+    # Area of Union
+    union = proposals_wh.view(B, -1, 1) + gt_bboxes_area.view(B, 1, -1) - intersect_area
+
+    # IoU
+    iou_mat = intersect_area / union
+    return iou_mat
