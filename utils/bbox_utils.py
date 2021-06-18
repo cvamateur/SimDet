@@ -250,6 +250,13 @@ def _reference_on_positive_anchors_yolo(anchors, gt_bboxes, grids, iou_mat, neg_
 
     For YOLO, a grid cell is responsible for predicting GT box if the center of the box falls
     into that grid.
+    Implement Details:
+        First compute manhattan distance between grid centers and gt_bboxes. This gives us a
+        matrix of shape [B, H'*H', N], then perform `torch.min(dim=1)[1]` on it gives us the
+        indexes indicating positive grids responsible for GT boxes.
+        Second, among all the anchors associated with the positive grids, the anchor with the
+        largest IoU with the GT box is responsible to predict the GT box.
+    NOTE: One anchor might match multiple GT boxes.
 
     Negative labels are assigned to those anchors which has IoU lower than `neg_thresh`.
     Anchors that are neither positive or negative are neutral, which do not contribute to
