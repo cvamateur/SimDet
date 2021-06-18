@@ -302,8 +302,8 @@ def _reference_on_positive_anchors_yolo(anchors, gt_bboxes, grids, iou_mat, neg_
     B, A, h_amap, w_amap = anchors.shape[:4]
     N = gt_bboxes.shape[1]
 
-    bbox_mask = (gt_bboxes[:, :, 0] != -1)                      # [B, N]
-    bbox_centers = (gt_bboxes[..., 2:4] - gt_bboxes[..., :2]) / 2. + gt_bboxes[..., :2]     # [B, N, 2]
+    bbox_mask = (gt_bboxes[:, :, 0] != -1)   # [B, N]
+    bbox_centers = (gt_bboxes[..., 2:4] - gt_bboxes[..., :2]) / 2. + gt_bboxes[..., :2]  # [B, N, 2]
 
     ######### Positive #########
     # L1 distances between girds centers and gt-bboxes, of shape [B, H'*W', N]
