@@ -71,7 +71,7 @@ def change_lightness_color(color, factor: float):
     return colorsys.hls_to_rgb(h, 1 - factor * (1 - l), s)
 
 
-def visualize_detection(image, bbox=None, pred=None, map_id_to_cls=None, fixed_color=False):
+def visualize_detection(image, bbox=None, pred=None, map_id_to_cls=None, fix_color=False):
     """
     Visualize bbox on the original image.
 
@@ -101,7 +101,7 @@ def visualize_detection(image, bbox=None, pred=None, map_id_to_cls=None, fixed_c
         for i in range(bbox.shape[0]):
             one_bbox = bbox[i]
 
-            if fixed_color:
+            if fix_color:
                 color = (255, 0, 0)
             else:
                 color = tuple(map(lambda x: int(x * 255.), cmap(i)[:3]))
@@ -111,7 +111,7 @@ def visualize_detection(image, bbox=None, pred=None, map_id_to_cls=None, fixed_c
         # draw predicted bbox
         for i in range(pred.shape[0]):
             one_bbox = pred[i]
-            if fixed_color:
+            if fix_color:
                 color = (0, 255, 0)
             else:
                 color = tuple(map(lambda x: int(x * 255.), cmap(i)[:3]))

@@ -50,7 +50,7 @@ def visualize_grids():
     for i in range(imgs.shape[0]):
         img_path = os.path.join(data_dir, "JPEGImages", img_id_list[i])
         img = Image.open(img_path).convert("RGB")
-        visualize_detection(img, grids_xyxy[i].view(-1, 4), grids_cell[i].view(-1, 4), fixed_color=True)
+        visualize_detection(img, grids_xyxy[i].view(-1, 4), grids_cell[i].view(-1, 4), fix_color=True)
 
 
 def visualize_anchors():
@@ -102,7 +102,7 @@ def visualize_proposals(offsets, method="YOLO"):
         visualize_detection(img,
                             anchors[i][0, 3:4, 3:4, :].view(-1, 4),
                             proposals[i][0, 3:4, 3:4, :].view(-1, 4),
-                            fixed_color=True)
+                            fix_color=True)
 
 
 def visualize_yolo_xy_transform():
@@ -153,7 +153,7 @@ def visualize_pos_and_neg_anchors():
         print("pos anchor index: ", pos_anc_idx[anc_idx_in_img])
         pos_anc_in_img = pos_anc_coord[anc_idx_in_img]
         pos_anc_in_img = coord_trans(pos_anc_in_img, h_list[i], w_list[i], mode="a2p")
-        visualize_detection(img, targets[i, :, :4], pos_anc_in_img, map_id_to_cls, fixed_color=True)
+        visualize_detection(img, targets[i, :, :4], pos_anc_in_img, map_id_to_cls, fix_color=True)
 
     # Negative Anchors
     for i in range(imgs.shape[0]):
@@ -164,8 +164,7 @@ def visualize_pos_and_neg_anchors():
         print("neg anchor index: ", neg_anc_idx[anc_idx_in_img])
         neg_anc_in_img = neg_anc_coord[anc_idx_in_img]
         neg_anc_in_img = coord_trans(neg_anc_in_img, h_list[i], w_list[i], mode="a2p")
-        visualize_detection(img, targets[i, :, :4], neg_anc_in_img, map_id_to_cls, fixed_color=True)
-
+        visualize_detection(img, targets[i, :, :4], neg_anc_in_img, map_id_to_cls, fix_color=True)
 
 
 if __name__ == '__main__':
