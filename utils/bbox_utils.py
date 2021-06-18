@@ -252,7 +252,7 @@ def _reference_on_positive_anchors_yolo(anchors, gt_bboxes, grids, iou_mat, neg_
     into that grid.
     Implement Details:
         First compute manhattan distance between grid centers and gt_bboxes. This gives us a
-        matrix of shape [B, H'*H', N], then perform `torch.min(dim=1)[1]` on it gives us the
+        matrix of shape [B, H'*W', N], then perform `torch.min(dim=1)[1]` on it gives us the
         indexes indicating positive grids responsible for GT boxes.
         Second, among all the anchors associated with the positive grids, the anchor with the
         largest IoU with the GT box is responsible to predict the GT box.
@@ -299,4 +299,65 @@ def _reference_on_positive_anchors_yolo(anchors, gt_bboxes, grids, iou_mat, neg_
     neg_anc_coord (tensor):
         Coordinates on negative anchors (mainly for visualization purpose).
     """
-    pass
+    B, A, h_amap, w_amap = anchors.shape[:4]
+    N = gt_bboxes.shape[1]
+
+    bbox_mask = (gt_bboxes[:, :, 0] != -1)                      # [B, N]
+    bbox_centers = (gt_bboxes[..., 2:4] - gt_bboxes[..., :2]) / 2. + gt_bboxes[..., :2]     # [B, N, 2]
+
+    ######### Positive #########
+    # L1 distances between girds centers and gt-bboxes, of shape [B, H'*W', N]
+    mah_dist = torch.sum(torch.abs(grids.view(B, -1, 1, 2) - bbox_centers.unsqueeze(1)), dim=-1)
+    # Get the minimum dist for each grid
+    min_mah_dist = torch.min(mah_dist, dim=1, keepdim=True)[0]  # [B, 1, N]
+    # positive grid
+    grid_mask = (mah_dist == min_mah_dist).unsqueeze(1)         # [B, 1, H'*W', N]
+
+    # Get the maximum IoU among all `A` anchors for each grid
+    reshaped_iou_mat = iou_mat.view(B, A, -1, N)                # [B, A, H'*W', N]
+    anc_with_max_iou = torch.max(reshaped_iou_mat, dim=1, keepdim=True)[0]  # [B, 1, H'*W', N]
+    anc_mask = (reshaped_iou_mat == anc_with_max_iou)           # [B, A, H'*W', N]
+
+    # Get positive anchors, those on minimum dist grids as well as max IoU
+    pos_anc_mask = (grid_mask & anc_mask).view(B, -1, N)        # [B, A*H'*W', N]
+    pos_anc_mask = pos_anc_mask & bbox_mask.view(B, 1, N)       # [B, A*H'*W', N]
+
+    # Get positive anchor indexes. NOTE: one anchor could match multiple GT boxes
+    pos_anc_idx = torch.nonzero(pos_anc_mask.view(-1)).squeeze(-1)  # [M]
+
+    # GT conf scores
+    gt_conf_scores = iou_mat.view(-1)[pos_anc_idx]                  # [M]
+
+    # GT class ids
+    # First expand GT bboxes to the same shape as anchors
+    gt_bboxes = gt_bboxes.view(B, 1, N, 5).repeat(1, A*h_amap*w_amap, 1, 1).view(-1, 5)
+    gt_cls_ids = gt_bboxes[:, 4][pos_anc_idx].long()
+    gt_bboxes = gt_bboxes[:, :4][pos_anc_idx]
+
+    ##### IMPORTANT #####
+    pos_anc_idx = (pos_anc_idx / float(N)).long()
+    #####################
+
+    # Get positive anchor coord
+    pos_anc_coord = anchors.view(-1, 4)[pos_anc_idx]
+
+    # GT offsets
+    gt_offsets_xy = (gt_bboxes[:, :2] + gt_bboxes[:, 2:] - pos_anc_coord[:, :2] - pos_anc_coord[:, 2:]) / 2.
+    gt_offsets_wh = torch.log((gt_bboxes[:, 2:] - gt_bboxes[:, :2]) / (pos_anc_coord[:, 2:] - pos_anc_coord[:, :2]))
+    gt_offsets = torch.cat([gt_offsets_xy, gt_offsets_wh], dim=-1)
+
+    ########## Negative ##########
+    neg_anc_mask = iou_mat.view(B, -1) < neg_thresh    # [B, A*H'*W'*N]
+    neg_anc_idx = torch.nonzero(neg_anc_mask.view(-1)).squeeze(-1)
+    neg_anc_idx = (neg_anc_idx / float(N)).long()
+    rand_pick = torch.randint(neg_anc_idx.shape[0], size=[pos_anc_idx.shape[0]])
+    neg_anc_idx = neg_anc_idx[rand_pick]
+    neg_anc_coord = anchors.view(-1, 4)[neg_anc_idx]
+
+    return pos_anc_idx, neg_anc_idx, gt_conf_scores, gt_offsets, gt_cls_ids, pos_anc_coord, neg_anc_coord
+
+
+    # Then compute offset according to the transformation formula
+
+
+
