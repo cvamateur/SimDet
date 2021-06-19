@@ -91,7 +91,7 @@ class PredictionNetworkYOLO(nn.Module):
         @Returns (During training):
         -------
         conf_scores (tensor):
-            Tensor of shape [2*M, 1] giving the predicted confidence scores for positive anchors
+            Tensor of shape [2*M] giving the predicted confidence scores for positive anchors
             and negative anchors (in that order).
         offsets (tensor):
             Tensor of shape [M, 4] giving predicted transformation for positive anchors.
@@ -148,12 +148,12 @@ class PredictionNetworkYOLO(nn.Module):
         @Returns:
         -------
         extracted_conf_score (tensor):
-            Tensor of shape [2*M, 1] giving the predicted confidence scores for positive anchors
+            Tensor of shape [2*M] giving the predicted confidence scores for positive anchors
             and negative anchors (in that order).
         """
         conf_scores = conf_scores.view(-1)
         pos_neg_idx = torch.cat([pos_anc_idx, neg_anc_idx])
-        return conf_scores[pos_neg_idx].unsqueeze(-1)
+        return conf_scores[pos_neg_idx]
 
     @staticmethod
     def _extract_offsets(offsets, pos_anc_idx):
