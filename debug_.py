@@ -15,7 +15,6 @@ from utils.bbox_utils import (
 )
 
 
-
 def get_sample_data(n_samples=3):
     data_dir = Configs.root_dir
     device = Configs.device

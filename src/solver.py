@@ -22,6 +22,7 @@ def detection_solver(detector: torch.nn.Module, data_loader, cfg):
     detector.train()
 
     # start training
+    print("Start Training")
     for epoch in range(cfg.epochs):
         tik = time.time()
         epoch_loss = 0.
@@ -39,6 +40,7 @@ def detection_solver(detector: torch.nn.Module, data_loader, cfg):
 
             loss_history.append(loss.item())
             epoch_loss += loss.item() * imgs.shape[0]
+            print('(Iter {} / {}) loss: {:.4f}'.format(i, len(data_loader), loss.item()))
 
         tok = time.time()
         epoch_loss /= len(data_loader)
