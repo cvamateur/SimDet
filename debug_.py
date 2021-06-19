@@ -1,5 +1,6 @@
 import os
 import cv2
+import matplotlib.pyplot as plt
 import torch
 from PIL import Image
 
@@ -13,6 +14,7 @@ from utils.bbox_utils import (
     coord_trans, generate_grids, get_anchor_shapes, generate_anchors, generate_proposals, iou,
     reference_on_positive_anchors_yolo,
 )
+from utils.pr_curve import precision_recall, pr_curve_vis, pr_auc
 
 
 def get_sample_data(n_samples=3):
@@ -193,6 +195,22 @@ def overfit_small_data():
         detection_solver(detector, small_train_loader, Configs)
 
 
+def visualize_pr_curve():
+    y_true = [1, 1, 0, 1, 0, 1, 1]
+    y_pred = [1.00, 0.91, 0.91, 0.90, 0.87, 0.85, 0.00]
+
+    prec, rec, thresh = precision_recall(y_pred, y_true)
+    auc = pr_auc(prec, rec)
+
+    #### 原始PR曲线
+    fig = pr_curve_vis(prec, rec, smooth=False, title=f"Original PR-Curve")
+    plt.show()
+
+    #### 平滑后的结果
+    fig = pr_curve_vis(prec, rec, smooth=True, title=f"Smoothed PR-Curve: AUC_{auc:.2f}")
+    plt.show()
+
+
 if __name__ == '__main__':
 
     # visualize_voc_data()
@@ -208,4 +226,6 @@ if __name__ == '__main__':
 
     # visualize_pos_and_neg_anchors()
 
-    overfit_small_data()
+    # overfit_small_data()
+
+    visualize_pr_curve()
