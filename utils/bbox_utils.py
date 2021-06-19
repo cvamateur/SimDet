@@ -122,7 +122,7 @@ def generate_anchors(anchor_shapes, grid_centers):
     -------
     anchors (tensor):
         Tensor of shape [B, A, H', W', 4] giving the positions of all anchor boxes for
-        the entire image. anchors[b, a, h, w] is an anchor box centered at  grid_centers[b, h, w],
+        the entire image. anchors[b, a, h, w] is an anchor box centered at grid_centers[b, h, w],
         whose shape is given by anchor_shapes[a]. The anchor boxes are parameterized as
         (x_tl, y_tl, x_br, y_br).
     """

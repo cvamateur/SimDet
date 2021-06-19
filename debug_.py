@@ -57,7 +57,7 @@ def visualize_grids():
 
 def visualize_anchors():
     # vis anchors at the center
-    batch_size = 3
+    batch_size = 1
     data_dir = Configs.root_dir
     device = Configs.device
     imgs, _, h_list, w_list, img_id_list = get_sample_data(batch_size)
@@ -79,6 +79,13 @@ def visualize_anchors():
         img_path = os.path.join(data_dir, "JPEGImages", img_id_list[i])
         img = Image.open(img_path).convert("RGB")
         visualize_detection(img, anchors[i].view(-1, 4))
+
+    # vis all anchors with shape [1, 1]
+    print("Visualize anchors with shape [1, 1] ...")
+    for i in range(imgs.shape[0]):
+        img_path = os.path.join(data_dir, "JPEGImages", img_id_list[i])
+        img = Image.open(img_path).convert("RGB")
+        visualize_detection(img, anchors[i][2:3, ...].view(-1, 4))
 
 
 def visualize_proposals(offsets, method="YOLO"):
@@ -128,7 +135,7 @@ def visualize_faster_rcnn_wh_transform():
 
 
 def visualize_pos_and_neg_anchors():
-    batch_size = 8
+    batch_size = 6
     data_dir = Configs.root_dir
     device = Configs.device
     imgs, targets, h_list, w_list, img_id_list = get_sample_data(batch_size)
@@ -145,6 +152,8 @@ def visualize_pos_and_neg_anchors():
     num_anc_per_img = torch.prod(torch.tensor(anchors.shape[1:-1])).long()
 
     print("Number of anchors per image:", num_anc_per_img)
+    print("Number positives:", pos_anc_idx.shape[0])
+    print("Number of negatives:", neg_anc_idx.shape[0])
 
     # Positive Anchors
     for i in range(imgs.shape[0]):
