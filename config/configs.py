@@ -17,6 +17,7 @@ class Configs:
     ###########
     # Root directory
     root_dir = os.path.join(project_dir, "data/VOCdevkit", "VOC2007")
+    num_classes = 20
 
     ##########
     # Anchors
@@ -39,4 +40,12 @@ class Configs:
 
     # Feature Extractor
     strides = 32
+    features_dim = 1280
 
+    #########
+    # Loss
+    #########
+    # Weights of three losses
+    w_conf = 1
+    w_reg = 1
+    w_cls = 1

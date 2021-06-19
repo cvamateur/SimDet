@@ -3,19 +3,18 @@ from torch import nn
 from torchvision import models
 from torchsummary import summary
 
-from config import Configs
-
 
 class FeatureExtractor(nn.Module):
     """
     Image feature extraction using MobileNet-V2.
     """
-    def __init__(self, target_height=224, target_width=224, verbose=False):
+    def __init__(self, cfg, verbose=False):
         super(FeatureExtractor, self).__init__()
-        self.input_shape = (3, target_height, target_width)
+        self.input_shape = (3, cfg.input_height, cfg.input_width)
         self.model = models.mobilenet_v2(pretrained=True).features
-        self.model.to(Configs.device)
         if verbose:
+            if cfg.device == "cuda":
+                self.model.to("cuda")
             summary(self.model, (3, 224, 224))
 
     def forward(self, image):
@@ -204,4 +203,7 @@ class PredictionNetworkYOLO(nn.Module):
 
 
 if __name__ == '__main__':
-    model = FeatureExtractor(verbose=True)
+    from config import Configs
+    model = FeatureExtractor(Configs, verbose=True)
+
+    pass

@@ -288,8 +288,8 @@ def reference_on_positive_anchors_yolo(anchors, gt_bboxes, grids, iou_mat, neg_t
     gt_conf_scores (tensor):
         GT IoU scores on positive anchors, of shape [M].
     gt_offsets (tensor):
-        GT offsets on positive anchors, of shape [M, 4], denoted as (\hat{tx}, \hat{ty},
-        \hat{tw}, \hat{th}). Refer to `generate_proposals()` for the transformation.
+        GT offsets on positive anchors, of shape [M, 4], denoted as (tx, ty, tw, t}). Refer
+        to `generate_proposals()` for the formula of transformation.
     gt_cls_ids (tensor):
         GT class ids on positive anchors, of shape [M].
     pos_anc_coord (tensor):
