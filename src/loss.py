@@ -42,7 +42,7 @@ def loss_bbox_regression(offsets, gt_offsets):
     return torch.mean(torch.sum((offsets - gt_offsets)**2, dim=1))
 
 
-def loss_cls_ce(cls_id, gt_cls_id, batch_size, num_anc_per_img, pos_anc_idx):
+def loss_cls_ce(cls_scores, gt_cls_ids, batch_size, num_anc_per_img, pos_anc_idx):
     """
     Cross-entropy loss for objects classification.
 
@@ -62,7 +62,7 @@ def loss_cls_ce(cls_id, gt_cls_id, batch_size, num_anc_per_img, pos_anc_idx):
     obj_cls_loss (scalar tensor):
         Loss of object classification.
     """
-    all_loss = F.cross_entropy(cls_id, gt_cls_id, reduction="none")
+    all_loss = F.cross_entropy(cls_scores, gt_cls_ids, reduction="none")
     obj_cls_loss = 0.
     for i in range(batch_size):
         anc_idx_in_img = (pos_anc_idx >= i * num_anc_per_img) & (pos_anc_idx < (i+1) * num_anc_per_img)

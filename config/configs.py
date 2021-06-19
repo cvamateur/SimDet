@@ -30,6 +30,10 @@ class Configs:
         [1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [2, 3], [3, 2], [3, 5], [5, 3]
     ]
 
+    # Thresholds for positive and negative anchors
+    pos_thresh = 0.7
+    neg_thresh = 0.3
+
     #########
     # Models
     #########
@@ -49,3 +53,19 @@ class Configs:
     w_conf = 1
     w_reg = 1
     w_cls = 1
+
+    ########
+    # Solver
+    ########
+    init_lr = 1e-3
+    lr_decay = 1
+    momentum = 0.9
+    weight_decay = 5e-5
+    epochs = 20
+
+    ########
+    # NMS
+    ########
+
+    # Threshold to eliminate redundant proposals
+    nms_thresh = 0.7

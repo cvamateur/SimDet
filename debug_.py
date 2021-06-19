@@ -5,11 +5,15 @@ from PIL import Image
 
 from config import Configs
 from src.dataset import get_pascal_voc_loader, VOCDataset, map_id_to_cls
+from src.solver import detection_solver
+from modeling import SingleStageDetector
+
 from utils.visualize import visualize_detection
 from utils.bbox_utils import (
     coord_trans, generate_grids, get_anchor_shapes, generate_anchors, generate_proposals, iou,
     reference_on_positive_anchors_yolo,
 )
+
 
 
 def get_sample_data(n_samples=3):
@@ -178,6 +182,18 @@ def visualize_pos_and_neg_anchors():
         visualize_detection(img, targets[i, :, :4], neg_anc_in_img, map_id_to_cls, fix_color=True)
 
 
+def overfit_small_data():
+    num_sample = 10
+    voc = VOCDataset(Configs.root_dir, "train")
+    small_dataset = torch.utils.data.Subset(voc, torch.linspace(0, len(voc) - 1, steps=num_sample).long())
+    small_train_loader = get_pascal_voc_loader(small_dataset, 8)
+
+    for lr in [1e-2]:
+        print("lr: lr")
+        detector = SingleStageDetector(Configs)
+        detection_solver(detector, small_train_loader, Configs)
+
+
 if __name__ == '__main__':
 
     # visualize_voc_data()
@@ -191,5 +207,6 @@ if __name__ == '__main__':
     # visualize_faster_rcnn_xy_transform()
     # visualize_faster_rcnn_wh_transform()
 
-    visualize_pos_and_neg_anchors()
-    pass
+    # visualize_pos_and_neg_anchors()
+
+    overfit_small_data()
