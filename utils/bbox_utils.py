@@ -407,5 +407,63 @@ def nms_slow(boxes, scores, nms_thresh=0.5, topK=None):
 
     keep = torch.tensor(keep, dtype=torch.int64, device=boxes.device)
     if topK is not None:
-        torch.topk(keep, int(topK))
+        keep_scores = scores[keep]
+        topk_idx = torch.topk(keep_scores, int(topK))[1]
+        keep = keep[topk_idx]
+    return keep
+
+
+def nms_fast(boxes, scores, nms_thresh=0.5, topK=None):
+    """
+    [Fast Version]
+    Non-Maximum Suppression removes overlapping bounding boxes.
+
+    Implementation details:
+        1. Select the highest-scoring box among the remaining ones,
+        which has not been chosen in this step before;
+        2. Eliminate boxes with IoU > threshold;
+        3. If any boxes remain, GOTO 1.
+
+    @Params:
+    -------
+    boxes (tensor):
+        Top-left and bottom-right coordinate values of the bounding boxes
+        to perform NMS on, of shape [N, 4].
+    scores (tensor):
+        Confidence scores for each one of the boxes, of shape [N].
+    nms_thresh (float):
+        Discard all overlapping boxes if IoU > num_thresh.
+    topK (int):
+        If this is not None, then return only the topK highest-scoring boxes,
+        otherwise if this is None, then return all boxes that pass NMS.
+
+    @Returns:
+    -------
+    keep (tensor):
+        Int64 tensor of shape [num_kept], with the indices of the elements that have been kept by
+        NMS, sorted in the decreasing order of scores.
+    """
+    assert boxes.shape[0] == scores.numel(), "Size not equal!"
+    if not boxes.numel() or not scores.numel():
+        return torch.zeros(0, dtype=torch.int64)
+
+    remain = torch.argsort(boxes)
+    iou_mat = iou(boxes.view(1, -1, 1, 1, 4), boxes.view(1, -1, 4))
+    iou_mat = iou_mat.squeeze()
+
+    keep = []
+    while remain.numel():
+        i = remain.numel() - 1
+        pick_idx = remain[i]
+        keep.append(pick_idx)
+
+        overlaps = iou_mat[pick_idx, remain]
+        pick_mask = overlaps <= nms_thresh
+        remain = remain[pick_mask]
+
+    keep = torch.tensor(keep, dtype=torch.int64, device=boxes.device)
+    if topK is not None:
+        keep_scores = scores[keep]
+        topk_idx = torch.topk(keep_scores, int(topK))[1]
+        keep = keep[topk_idx]
     return keep
