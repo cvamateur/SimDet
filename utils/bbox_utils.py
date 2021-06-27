@@ -114,8 +114,8 @@ def generate_anchors(anchor_shapes, grid_centers):
         point in the grid. anchor_shapes[a] = (w, h) indicate width and height
         of the a-th anchors.
     grid_centers (tensor):
-        Tensor of shape [B, H', W', 2] giving the (x, y) coordinates of the center of
-        each feature from the backbone feature-map. This is the tensor returned by
+        Tensor of shape [B, H', W', 2] giving the (x, y) coordinates of the center on
+         the feature-map of the backbone network. This is the tensor returned by
         `generate_grids()`
 
     @Returns:
@@ -149,9 +149,9 @@ def generate_proposals(anchors, offsets, method="YOLO"):
         parameterized by the coordinates (x_tl, y_tl, x_br, y_br).
     offsets (tensor):
         Transformations of the same shape as anchors, [B, A, H', W', 4], that will be
-        used to convert anchor boxes into region proposals. The formula the transformation
+        used to convert anchor boxes into region proposals. The formula the transformation applied
         from offsets[b, a, h, w] = (tx, ty, th, tw) to anchors[b, a, h, w] = (x_tl, y_tl, x_br, y_bt)
-        will be difference according to `method`:
+        will be different according to `method`:
             method == "YOLO":               #  Assume values in range
                 cx_p = cx_a + tx            # `tx` in range [-0.5, 0.5]
                 cy_p = cy_a + ty            # `ty` in range [-0.5, 0.5]
@@ -202,7 +202,7 @@ def iou(proposals, gt_bboxes):
     @Params:
     -------
     proposals (tensor):
-        Proposals of shape [B, A, H', W', 4], where 4 indicates (x_tl, y_tl, x_br, y_br)
+        Proposals of shape [B, A, H', W', 4], where 4 indicates (x_tl, y_tl, x_br, y_br).
     gt_bboxes (tensor):
         Ground truth boxes, from the DataLoader, of shape [B, N, 5], where 5 indicates
         (x_tl, y_tl, x_br, y_br, cls_id). N is the max number of bboxes within this batch,
@@ -216,7 +216,6 @@ def iou(proposals, gt_bboxes):
         one element of proposals[b] with gt_bboxes[b, n]
     """
     B, A, h_amap, w_amap = proposals.shape[:4]
-    N = gt_bboxes.shape[1]
     proposals = proposals.view(B, -1, 1, 4)           # [B, A*H'*W', 1, 4]
     gt_bboxes = gt_bboxes[..., :4].view(B, 1, -1, 4)  # [B, 1, N, 4]
 
@@ -351,3 +350,62 @@ def reference_on_positive_anchors_yolo(anchors, gt_bboxes, grids, iou_mat, neg_t
 
 def reference_on_positive_anchors_faster_rcnn():
     pass
+
+
+def nms_slow(boxes, scores, nms_thresh=0.5, topK=None):
+    """
+    [Slow Version]
+    Non-Maximum Suppression removes overlapping bounding boxes.
+
+    Implementation details:
+        1. Select the highest-scoring box among the remaining ones,
+        which has not been chosen in this step before;
+        2. Eliminate boxes with IoU > threshold;
+        3. If any boxes remain, GOTO 1.
+
+    @Params:
+    -------
+    boxes (tensor):
+        Top-left and bottom-right coordinate values of the bounding boxes
+        to perform NMS on, of shape [N, 4].
+    scores (tensor):
+        Confidence scores for each one of the boxes, of shape [N].
+    nms_thresh (float):
+        Discard all overlapping boxes if IoU > num_thresh.
+    topK (int):
+        If this is not None, then return only the topK highest-scoring boxes,
+        otherwise if this is None, then return all boxes that pass NMS.
+
+    @Returns:
+    -------
+    keep (tensor):
+        Int64 tensor of shape [num_kept], with the indices of the elements that have been kept by
+        NMS, sorted in the decreasing order of scores.
+    """
+    assert boxes.numel() == scores.numel(), "Size not equal!"
+    if not boxes.numel() or not scores.numel():
+        return torch.zeros(0, dtype=torch.int64)
+
+    remain = torch.argsort(scores)
+    iou_mat = iou(boxes.view(1, -1, 1, 1, 4), boxes.view(1, -1, 4))
+    iou_mat = iou_mat.squeeze()
+
+    keep = []
+    while remain.numel() > 0:
+        i = remain.numel() - 1
+        pick_idx = remain[i]
+        keep.append(pick_idx)
+        suppress = [i]
+        for j in range(i):
+            curr_idx = remain[j]
+            overlap = iou_mat[curr_idx, pick_idx]
+            if overlap > nms_thresh:
+                suppress.append(j)
+        mask = torch.ones_like(remain, dtype=torch.bool)
+        mask[suppress] = False
+        remain = remain[mask]
+
+    keep = torch.tensor(keep, dtype=torch.int64, device=boxes.device)
+    if topK is not None:
+        torch.topk(keep, int(topK))
+    return keep
