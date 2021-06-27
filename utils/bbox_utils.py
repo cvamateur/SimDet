@@ -1,4 +1,5 @@
 import torch
+import torchvision
 
 
 def coord_trans(bbox, h_pixel, w_pixel, h_amap=7, w_amap=7, mode="p2a"):
@@ -356,6 +357,7 @@ def nms_slow(boxes, scores, nms_thresh=0.5, topK=None):
     """
     [Slow Version]
     Non-Maximum Suppression removes overlapping bounding boxes.
+    NOTE: Refer to `torchvision.ops.nms` for nms in real project.
 
     Implementation details:
         1. Select the highest-scoring box among the remaining ones,
@@ -382,7 +384,7 @@ def nms_slow(boxes, scores, nms_thresh=0.5, topK=None):
         Int64 tensor of shape [num_kept], with the indices of the elements that have been kept by
         NMS, sorted in the decreasing order of scores.
     """
-    assert boxes.numel() == scores.numel(), "Size not equal!"
+    assert boxes.shape[0] == scores.numel(), "Size not equal!"
     if not boxes.numel() or not scores.numel():
         return torch.zeros(0, dtype=torch.int64)
 
@@ -415,7 +417,7 @@ def nms_slow(boxes, scores, nms_thresh=0.5, topK=None):
 
 def nms_fast(boxes, scores, nms_thresh=0.5, topK=None):
     """
-    [Fast Version]
+    [Fast Version: 100x speed up against slow-version]
     Non-Maximum Suppression removes overlapping bounding boxes.
 
     Implementation details:
@@ -447,7 +449,7 @@ def nms_fast(boxes, scores, nms_thresh=0.5, topK=None):
     if not boxes.numel() or not scores.numel():
         return torch.zeros(0, dtype=torch.int64)
 
-    remain = torch.argsort(boxes)
+    remain = torch.argsort(scores)
     iou_mat = iou(boxes.view(1, -1, 1, 1, 4), boxes.view(1, -1, 4))
     iou_mat = iou_mat.squeeze()
 

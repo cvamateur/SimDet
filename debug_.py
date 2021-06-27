@@ -1,20 +1,22 @@
 import os
 import cv2
-import matplotlib.pyplot as plt
+import random
+import time
 import torch
+import torchvision
 from PIL import Image
+import matplotlib.pyplot as plt
 
 from config import Configs
 from src.dataset import get_pascal_voc_loader, VOCDataset, map_id_to_cls
 from src.solver import detection_solver
 from modeling import SingleStageDetector
-
 from utils.visualize import visualize_detection
+from utils.pr_curve import precision_recall, pr_curve_vis, pr_auc
 from utils.bbox_utils import (
     coord_trans, generate_grids, get_anchor_shapes, generate_anchors, generate_proposals, iou,
-    reference_on_positive_anchors_yolo,
+    reference_on_positive_anchors_yolo, nms_slow, nms_fast,
 )
-from utils.pr_curve import precision_recall, pr_curve_vis, pr_auc
 
 
 def get_sample_data(n_samples=3):
@@ -211,13 +213,66 @@ def visualize_pr_curve():
     plt.show()
 
 
+def test_nms(nms_func):
+    print(f"\nTest the speed of {nms_func.__name__} against torchvision.ops.nms")
+    torch.manual_seed(0)
+    random.seed(0)
+
+    boxes = (100. * torch.rand(5000, 4)).round()
+    boxes[:, 2] = boxes[:, 2] + boxes[:, 0] + 1.
+    boxes[:, 3] = boxes[:, 3] + boxes[:, 1] + 1.
+    scores = torch.randn(5000)
+
+    names = ['your_cpu', 'torchvision_cpu', 'torchvision_cuda']
+    iou_thresholds = [0.3, 0.5, 0.7]
+    elapsed = dict(zip(names, [0.] * len(names)))
+    intersects = dict(zip(names[1:], [0.] * (len(names) - 1)))
+
+    for iou_threshold in iou_thresholds:
+        tic = time.time()
+        my_keep = nms_func(boxes, scores, iou_threshold)
+        elapsed['your_cpu'] += time.time() - tic
+
+        tic = time.time()
+        tv_keep = torchvision.ops.nms(boxes, scores, iou_threshold)
+        elapsed['torchvision_cpu'] += time.time() - tic
+        intersect = len(set(tv_keep.tolist()).intersection(my_keep.tolist())) / len(tv_keep)
+        intersects['torchvision_cpu'] += intersect
+
+        tic = time.time()
+        tv_cuda_keep = torchvision.ops.nms(boxes.cuda(), scores.cuda(), iou_threshold).to(my_keep.device)
+        torch.cuda.synchronize()
+        elapsed['torchvision_cuda'] += time.time() - tic
+        intersect = len(set(tv_cuda_keep.tolist()).intersection(my_keep.tolist())) / len(tv_cuda_keep)
+        intersects['torchvision_cuda'] += intersect
+
+        print("NMS outputs:")
+        print(my_keep[::100])
+        print(tv_keep[::100])
+        print(tv_cuda_keep[::100])
+        print("\n\n")
+
+    for key in intersects:
+        intersects[key] /= len(iou_thresholds)
+
+    # You should see < 1% difference
+    print('Testing NMS:')
+    print('Your        CPU  implementation: %fs' % elapsed['your_cpu'])
+    print('torchvision CPU  implementation: %fs' % elapsed['torchvision_cpu'])
+    print('torchvision CUDA implementation: %fs' % elapsed['torchvision_cuda'])
+    print('Speedup CPU : %fx' % (elapsed['your_cpu'] / elapsed['torchvision_cpu']))
+    print('Speedup CUDA: %fx' % (elapsed['your_cpu'] / elapsed['torchvision_cuda']))
+    print('Difference CPU : ', 1. - intersects['torchvision_cpu'])  # in the order of 1e-3 or less
+    print('Difference CUDA: ', 1. - intersects['torchvision_cuda'])  # in the order of 1e-3 or less
+
+
 if __name__ == '__main__':
 
     # visualize_voc_data()
 
     # visualize_grids()
 
-    visualize_anchors()
+    # visualize_anchors()
 
     # visualize_yolo_xy_transform()
     # visualize_yolo_wh_transform()
@@ -229,3 +284,6 @@ if __name__ == '__main__':
     # overfit_small_data()
 
     # visualize_pr_curve()
+
+    # test_nms(nms_slow)
+    test_nms(nms_fast)
