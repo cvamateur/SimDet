@@ -166,7 +166,7 @@ def visualize_pos_and_neg_anchors():
     for i in range(imgs.shape[0]):
         img_path = os.path.join(data_dir, "JPEGImages", img_id_list[i])
         img = Image.open(img_path).convert("RGB")
-        anc_idx_in_img = (pos_anc_idx >= i * num_anc_per_img) & (pos_anc_idx < (i+1) * num_anc_per_img)
+        anc_idx_in_img = (pos_anc_idx >= i * num_anc_per_img) & (pos_anc_idx < (i + 1) * num_anc_per_img)
         print(f"\n{i} - number positive anchors:", torch.sum(anc_idx_in_img))
         print("pos anchor index: ", pos_anc_idx[anc_idx_in_img])
         pos_anc_in_img = pos_anc_coord[anc_idx_in_img]
@@ -214,7 +214,7 @@ def visualize_pr_curve():
 
 
 def test_nms(nms_func):
-    print(f"\nTest the speed of {nms_func.__name__} against torchvision.ops.nms")
+    print(f"\nTest the speed of `{nms_func.__name__}` against `torchvision.ops.nms")
     torch.manual_seed(0)
     random.seed(0)
 
@@ -267,7 +267,6 @@ def test_nms(nms_func):
 
 
 if __name__ == '__main__':
-
     # visualize_voc_data()
 
     # visualize_grids()
