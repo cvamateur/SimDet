@@ -49,7 +49,7 @@ def _draw_bbox_on_image(image, bbox, color, map_id_to_cls=None, fix_color=False)
         if map_id_to_cls is not None:
             cls_name = map_id_to_cls[cls_id]
         if len(bbox) > 5:
-            cls_conf = f", {bbox[5]: .2f}"
+            cls_conf = f", {bbox[5]:.2f}"
         tag = cls_name + cls_conf
         if not fix_color: color = change_lightness_color(color, 2.)
         cv2.putText(image, tag, (int(bbox[0]), int(bbox[1]) + 15), cv2.FONT_HERSHEY_COMPLEX, 0.7, color, 1)
@@ -105,7 +105,7 @@ def visualize_detection(image, bbox=None, pred=None, map_id_to_cls=None, fix_col
                 color = (255, 0, 0)
             else:
                 color = tuple(map(lambda x: int(x * 255.), cmap(i)[:3]))
-            _draw_bbox_on_image(image, one_bbox, color, map_id_to_cls)
+            _draw_bbox_on_image(image, one_bbox, color, map_id_to_cls, fix_color=fix_color)
 
     if pred is not None:
         # draw predicted bbox
@@ -116,7 +116,7 @@ def visualize_detection(image, bbox=None, pred=None, map_id_to_cls=None, fix_col
             else:
                 color = tuple(map(lambda x: int(x * 255.), cmap(i)[:3]))
                 color = change_lightness_color(color, 0.5)
-            _draw_bbox_on_image(image, one_bbox, color, map_id_to_cls)
+            _draw_bbox_on_image(image, one_bbox, color, map_id_to_cls, fix_color=fix_color)
 
     plt.imshow(image)
     plt.axis("off")

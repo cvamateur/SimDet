@@ -67,11 +67,11 @@ class PredictionNetworkYOLO(nn.Module):
         """
         Run forward pass of the network to predict outputs given features from the backbone network.
 
-        The outputs from the method are different during training and inference:
+        The outputs are different during training and inference:
         During training:
-            `pos_anc_idx` and `neg_anc_idx` are given and identify which anchors should be positive
-            and negative, the this forward pass needs to extract only the predictions for the
-            positive and negative anchors.
+            `pos_anc_idx` and `neg_anc_idx` are given, and identify which anchors should be positive
+            and negative, this forward pass needs to extract only the predictions for the positive
+            and negative anchors.
 
         During inference:
             only features are provided and this method needs to return predictions for all anchors.
@@ -107,7 +107,6 @@ class PredictionNetworkYOLO(nn.Module):
         """
         out = self.pred_layer(features)     # [B, 5A+C, H', W']
 
-        conf_scores, offsets, cls_scores = None, None, None
         B, _, h_amap, w_amap = features.shape[:4]
         A, C = self.num_anchors, self.num_classes
 
@@ -117,7 +116,7 @@ class PredictionNetworkYOLO(nn.Module):
 
         offsets = out[:, 0:5*A, :, :].clone()           # [B, 5A, H', W']
         offsets = offsets.view(B, A, 5, h_amap, w_amap) # [B, A, 5, H', W']
-        offsets = offsets[:, :, 1:5, :, :]    # [B, A, 4, H', W']
+        offsets = offsets[:, :, 1:5, :, :]              # [B, A, 4, H', W']
         offsets[:, :, :2, :, :] = torch.sigmoid(offsets[:, :, :2, :, :]) - 0.5
 
         cls_scores = out[:, 5*A:, :, :]                 # [B, C, H', W']
@@ -138,7 +137,7 @@ class PredictionNetworkYOLO(nn.Module):
         @Params:
         -------
         conf_scores (tensor):
-            Tensor of shape [B, A, H', W'] given confidence scores for all anchors
+            Tensor of shape [B, A, H', W'] given confidence scores for all anchors.
         pos_anc_idx (tensor):
             int64 tensor of shape [M] giving the indices of anchors marked as positive.
         neg_anc_idx (tensor):
@@ -195,8 +194,8 @@ class PredictionNetworkYOLO(nn.Module):
         [Link](https://discuss.pytorch.org/t/torch-repeat-and-torch-expand-which-to-use/27969/2)
         """
         B, C, h_amap, w_amap = cls_scores.shape
-        cls_scores = cls_scores.clone()    # [B, C, H', W']
-        cls_scores = cls_scores.permute(0, 2, 3, 1).contiguous()   # [B, H', W', C]
+        cls_scores = cls_scores.clone()                             # [B, C, H', W']
+        cls_scores = cls_scores.permute(0, 2, 3, 1).contiguous()    # [B, H', W', C]
         cls_scores = cls_scores.unsqueeze(1).expand(B, self.num_anchors, h_amap, w_amap, C)  # [B, A, H', W', C]
         cls_scores = cls_scores.reshape(-1, C)
         return cls_scores[pos_anc_idx]

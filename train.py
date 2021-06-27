@@ -1,3 +1,7 @@
+import os
+
+import torch
+
 from config import Configs as cfg
 from src.dataset import get_pascal_voc_loader, VOCDataset, map_id_to_cls
 from src.solver import detection_solver
@@ -15,7 +19,11 @@ def main():
     detector = SingleStageDetector(cfg)
     print("Detector Built.\n")
 
+    # Train the model
     detection_solver(detector, ds_train, cfg)
+
+    # Save the model
+    torch.save(detector.state_dict(), cfg.lst_ckpt)
 
 
 if __name__ == '__main__':

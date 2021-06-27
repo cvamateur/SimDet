@@ -217,7 +217,7 @@ if __name__ == '__main__':
 
     # visualize_grids()
 
-    # visualize_anchors()
+    visualize_anchors()
 
     # visualize_yolo_xy_transform()
     # visualize_yolo_wh_transform()
@@ -228,4 +228,4 @@ if __name__ == '__main__':
 
     # overfit_small_data()
 
-    visualize_pr_curve()
+    # visualize_pr_curve()

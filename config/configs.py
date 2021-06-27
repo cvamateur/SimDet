@@ -11,6 +11,7 @@ class Configs:
     # Worldwide
     ###########
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    lst_ckpt = os.path.join(project_dir, "ckpt/lst.pt")
 
     ###########
     # Datasets
@@ -57,11 +58,11 @@ class Configs:
     ########
     # Solver
     ########
-    init_lr = 1e-3
-    lr_decay = 1
+    init_lr = 1e-2
+    lr_decay = 0.99
     momentum = 0.9
     weight_decay = 5e-5
-    epochs = 20
+    epochs = 500
 
     ########
     # NMS

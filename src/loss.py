@@ -9,9 +9,9 @@ def loss_conf_scores_regression(conf_score, gt_conf_scores):
     @Params:
     -------
     conf_score (tensor):
-        Predicted confidence score of shape [2M, 1]
+        Predicted confidence score of shape [2M].
     gt_conf_scores (tensor):
-        GT conf scores of shape [M]
+        GT conf scores of shape [M].
 
     @Returns:
     -------
