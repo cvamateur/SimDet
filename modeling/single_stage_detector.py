@@ -87,6 +87,8 @@ class SingleStageDetector(torch.nn.Module):
             features = self.feature_extractor(images)
             B, _, h_amap, w_amap = features.shape
             A = self.anc_shapes.shape[0]
+            thresh: float = self.cfg.test_thresh
+            nms_thresh: float = self.cfg.test_nms_thresh
 
             # 2. Predict conf_scores, offsets, cls_scores
             conf_scores, offsets, cls_scores = self.pred_network(features)

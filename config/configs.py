@@ -70,3 +70,8 @@ class Configs:
     # Threshold to eliminate redundant proposals
     nms_thresh = 0.7
 
+    ############
+    # Inference
+    ############
+    test_thresh = 0.8
+    test_nms_thresh = 0.7
