@@ -67,6 +67,6 @@ class Configs:
     ########
     # NMS
     ########
-
     # Threshold to eliminate redundant proposals
     nms_thresh = 0.7
+
