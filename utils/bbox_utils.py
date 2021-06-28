@@ -390,7 +390,7 @@ def nms_slow(boxes, scores, nms_thresh=0.5, topK=None):
 
     remain = torch.argsort(scores)
     iou_mat = iou(boxes.view(1, -1, 1, 1, 4), boxes.view(1, -1, 4))
-    iou_mat = iou_mat.squeeze()
+    iou_mat = iou_mat.squeeze(0)
 
     keep = []
     while remain.numel() > 0:
@@ -451,7 +451,7 @@ def nms_fast(boxes, scores, nms_thresh=0.5, topK=None):
 
     remain = torch.argsort(scores)
     iou_mat = iou(boxes.view(1, -1, 1, 1, 4), boxes.view(1, -1, 4))
-    iou_mat = iou_mat.squeeze()
+    iou_mat = iou_mat.squeeze(0)
 
     keep = []
     while remain.numel():

@@ -278,7 +278,7 @@ if __name__ == '__main__':
     # visualize_faster_rcnn_xy_transform()
     # visualize_faster_rcnn_wh_transform()
 
-    # visualize_pos_and_neg_anchors()
+    visualize_pos_and_neg_anchors()
 
     # overfit_small_data()
 
