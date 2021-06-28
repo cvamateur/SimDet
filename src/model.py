@@ -204,5 +204,3 @@ class PredictionNetworkYOLO(nn.Module):
 if __name__ == '__main__':
     from config import Configs
     model = FeatureExtractor(Configs, verbose=True)
-
-    pass
